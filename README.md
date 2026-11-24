@@ -12,6 +12,10 @@ Webapp PWA mobile-first ispirata all'APK Android `Calendario di Lavoro per turni
 - Stampa e tema scuro.
 - PWA installabile e cache offline.
 - Persistenza locale tramite localStorage.
+- Lettore PDF con estrazione del testo nel browser, anteprima dei nominativi/codici riconosciuti e conversione visuale H32 → 16.
+- Esportazione dell'estrazione in JSON per verifica e archivio.
+
+**Nota sul lettore PDF:** la prima versione lavora sui PDF con testo selezionabile. I PDF scannerizzati richiederanno OCR; l'estrazione va sempre verificata rispetto al documento originale e non modifica automaticamente il calendario.
 
 ## Avvio
 Aprire `index.html` oppure pubblicare la cartella su GitHub Pages / hosting statico HTTPS. Per installare come PWA usare il menu del browser e scegliere "Installa app" o "Aggiungi a schermata Home".
