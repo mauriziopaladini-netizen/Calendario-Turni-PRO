@@ -31,6 +31,9 @@ jobs:
         with:
           path: "."
 
+      - name: Wait for artifact registration
+        run: sleep 15
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
