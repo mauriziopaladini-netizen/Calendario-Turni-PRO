@@ -2,22 +2,22 @@
 const $=id=>document.getElementById(id);
 let latest=null;
 const months=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
-const codeRe=/^(?:H\\d{1,3}|R\\d?|RZ|RIP|RIPOSO|OFF|FER|FEST|F\\d{0,2}|SM\\d{0,2}|TRN|\\*{3}|[A-Z]{1,3}\\d{0,2})$/i;
+const codeRe=/^(?:H\d{1,3}|R\d?|RZ|RIP|RIPOSO|OFF|FER|FEST|F\d{0,2}|SM\d{0,2}|TRN|\*{3}|[A-Z]{1,3}\d{0,2})$/i;
 function status(t){$('pdfStatus').textContent=t}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function normalized(code){const m=String(code).match(/^H(\\d{1,3})$/i);return m?String(Number(m[1])/2):code}
-function parseMonth(text,name){let m=text.match(/\\b(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\\s+(20\\d{2})\\b/i)||String(name).match(/(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)[ _-]*(20\\d{2})/i);return m?{month:months.indexOf(m[1].toLowerCase())+1,monthName:m[1],year:Number(m[2])}:null}
+function normalized(code){const m=String(code).match(/^H(\d{1,3})$/i);return m?String(Number(m[1])/2):code}
+function parseMonth(text,name){let m=text.match(/\b(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+(20\d{2})\b/i)||String(name).match(/(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)[ _-]*(20\d{2})/i);return m?{month:months.indexOf(m[1].toLowerCase())+1,monthName:m[1],year:Number(m[2])}:null}
 function detectRows(lines){
  const rows=[],seen=new Set();
  for(const line of lines){
-  const tokens=line.replace(/\\s+/g,' ').trim().split(/\\s+/);if(tokens.length<7)continue;
+  const tokens=line.replace(/\s+/g,' ').trim().split(/\s+/);if(tokens.length<7)continue;
   const first=tokens.findIndex(t=>codeRe.test(t));
   if(first<1)continue;
   const prefix=tokens.slice(0,first);
-  const id=/^\\d{4,6}$/.test(prefix[0])?prefix[0]:null;
+  const id=/^\d{4,6}$/.test(prefix[0])?prefix[0]:null;
   const names=id?prefix.slice(1):prefix;
   if(!names.length)continue;
-  const name=names.join(' ').replace(/\\s+/g,' ').trim();
+  const name=names.join(' ').replace(/\s+/g,' ').trim();
   const codes=tokens.slice(first).filter(t=>codeRe.test(t));
   if(codes.length<5)continue;
   const key=(id||name.toLocaleUpperCase('it-IT'));
@@ -29,7 +29,7 @@ function detectRows(lines){
 }
 async function read(){
  const f=$('rosterPdf').files[0];if(!f)return status('Seleziona prima un file PDF.');
- if(!/\\.pdf$/i.test(f.name)&&f.type!=='application/pdf')return status('Il file selezionato non sembra un PDF.');
+ if(!/\.pdf$/i.test(f.name)&&f.type!=='application/pdf')return status('Il file selezionato non sembra un PDF.');
  if(!window.pdfjsLib)return status('Il motore PDF non è disponibile. Controlla la connessione e ricarica la pagina.');
  try{
   $('readPdfBtn').disabled=true;status('Lettura del PDF in corso…');
@@ -41,10 +41,10 @@ async function read(){
    const rows=[];
    for(const it of items){let row=rows.find(r=>Math.abs(r.y-it.y)<=3);if(!row){row={y:it.y,items:[]};rows.push(row)}row.items.push(it)}
    rows.sort((a,b)=>b.y-a.y);
-   const pageLines=rows.map(r=>r.items.sort((a,b)=>a.x-b.x).map(x=>x.str).join(' ').replace(/\\s+/g,' ').trim()).filter(Boolean);
-   lines.push(...pageLines);full.push(pageLines.join('\\n'));
+   const pageLines=rows.map(r=>r.items.sort((a,b)=>a.x-b.x).map(x=>x.str).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+   lines.push(...pageLines);full.push(pageLines.join('\n'));
   }
-  const raw=full.join('\\n\\n'),period=parseMonth(raw,f.name),employees=detectRows(lines);
+  const raw=full.join('\n\n'),period=parseMonth(raw,f.name),employees=detectRows(lines);
   const dayCounts=[...new Set(employees.map(e=>e.days))].sort((a,b)=>a-b);
   latest={fileName:f.name,pages:pdf.numPages,period,employees,raw,readAt:new Date().toISOString(),dayCounts};
   $('pdfMeta').classList.remove('hidden');
@@ -53,7 +53,7 @@ async function read(){
   if(employees.length){
    const maxDays=Math.max(...employees.map(e=>e.days));
    const headers=Array.from({length:maxDays},(_,i)=>'<th>'+String(i+1).padStart(2,'0')+'</th>').join('');
-   const body=employees.map(e=>'<tr><td>'+esc(e.id||'—')+'</td><td>'+esc(e.name)+'</td>'+Array.from({length:maxDays},(_,i)=>{const c=e.codes[i];return '<td class="'+(c&&/^H\\d/i.test(c.original)?'pdf-code':'')+'" title="'+(c?esc(c.original+(c.original.toUpperCase().startsWith('H')?' = '+c.converted+' ore':'')):'')+'">'+(c?esc(c.original)+(c.original.toUpperCase().startsWith('H')?'<small class="pdf-converted"> ('+esc(c.converted)+')</small>':''):'—')+'</td>'}).join('')+'</tr>').join('');
+   const body=employees.map(e=>'<tr><td>'+esc(e.id||'—')+'</td><td>'+esc(e.name)+'</td>'+Array.from({length:maxDays},(_,i)=>{const c=e.codes[i];return '<td class="'+(c&&/^H\d/i.test(c.original)?'pdf-code':'')+'" title="'+(c?esc(c.original+(c.original.toUpperCase().startsWith('H')?' = '+c.converted+' ore':'')):'')+'">'+(c?esc(c.original)+(c.original.toUpperCase().startsWith('H')?'<small class="pdf-converted"> ('+esc(c.converted)+')</small>':''):'—')+'</td>'}).join('')+'</tr>').join('');
    $('pdfPreview').innerHTML='<table class="pdf-table"><thead><tr><th>Matricola</th><th>Dipendente</th>'+headers+'</tr></thead><tbody>'+body+'</tbody></table><p class="muted">Ogni colonna corrisponde al giorno del mese. I codici H sono mostrati anche convertiti (es. H32 → 16). Gli altri codici restano invariati. Scorri orizzontalmente la tabella per vedere tutti i giorni. Nessun turno è stato importato nel calendario.</p>';
   } else $('pdfPreview').innerHTML='<div class="pdf-empty">Il testo è stato estratto, ma non ho riconosciuto righe dipendente con sufficiente sicurezza. Controlla il testo estratto qui sotto: il formato del prospetto potrebbe richiedere un adattamento.</div>';
   status('Lettura completata. Il calendario non è stato modificato.');
