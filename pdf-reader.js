@@ -27,6 +27,39 @@ function detectRows(lines){
  }
  return rows;
 }
+
+function renderColleagueControls(employees){
+ const box=$('colleagueCompare');box.classList.remove('hidden');
+ $('myEmployee').innerHTML='<option value="">Seleziona il tuo nominativo</option>'+employees.map((e,i)=>'<option value="'+i+'">'+esc(e.name)+(e.id?' · '+esc(e.id):'')+'</option>').join('');
+ $('colleagueChoices').innerHTML=employees.map((e,i)=>'<label class="colleague-choice"><input type="checkbox" value="'+i+'" class="colleague-check"><span>'+esc(e.name)+(e.id?' <small>· '+esc(e.id)+'</small>':'')+'</span></label>').join('');
+ $('compareResult').classList.add('hidden');
+}
+function compareColleagues(){
+ if(!latest)return;
+ const ownValue=$('myEmployee').value;
+ if(ownValue==='')return status('Seleziona prima il tuo nominativo.');
+ const ownIndex=Number(ownValue),own=latest.employees[ownIndex];
+ const selected=[...document.querySelectorAll('.colleague-check:checked')].map(x=>Number(x.value)).filter(i=>i!==ownIndex);
+ if(!selected.length)return status('Seleziona almeno un collega da confrontare.');
+ const mode=$('compareFilter').value,maxDays=Math.max(own.days,...selected.map(i=>latest.employees[i].days)),rows=[];
+ for(let day=0;day<maxDays;day++){
+  const mine=own.codes[day]?.original||'—';
+  const cells=selected.map(i=>{const colleague=latest.employees[i],code=colleague.codes[day]?.original||'—';return {code,same:mine===code}});
+  if(mode==='same'&&!cells.some(c=>c.same))continue;
+  if(mode==='different'&&!cells.some(c=>!c.same))continue;
+  rows.push({day:day+1,mine,cells});
+ }
+ $('compareSummary').innerHTML=selected.map(i=>{
+  const e=latest.employees[i],n=Math.max(own.days,e.days);let same=0,different=0;
+  for(let d=0;d<n;d++){const a=own.codes[d]?.original||'—',b=e.codes[d]?.original||'—';if(a===b)same++;else different++}
+  return '<div class="compare-summary"><b>'+esc(e.name)+'</b><span class="compare-same">'+same+' giorni uguali</span><span class="compare-different">'+different+' diversi</span></div>';
+ }).join('');
+ const head='<tr><th>Giorno</th><th>Tu · '+esc(own.name)+'</th>'+selected.map(i=>'<th>'+esc(latest.employees[i].name)+'</th>').join('')+'</tr>';
+ const body=rows.map(r=>'<tr><th>'+String(r.day).padStart(2,'0')+'</th><td class="compare-own">'+esc(r.mine)+'</td>'+r.cells.map(c=>'<td class="'+(c.same?'is-same':'is-different')+'"><b>'+esc(c.code)+'</b><small>'+(c.same?'Uguale':'Diverso')+'</small></td>').join('')+'</tr>').join('');
+ $('compareTable').innerHTML='<table class="pdf-table compare-table"><thead>'+head+'</thead><tbody>'+(body||'<tr><td colspan="'+(selected.length+2)+'">Nessuna giornata corrisponde al filtro selezionato.</td></tr>')+'</tbody></table>';
+ $('compareResult').classList.remove('hidden');
+ status('Confronto pronto: '+selected.length+' colleghi confrontati con '+own.name+'.');
+}
 async function read(){
  const f=$('rosterPdf').files[0];if(!f)return status('Seleziona prima un file PDF.');
  if(!/\.pdf$/i.test(f.name)&&f.type!=='application/pdf')return status('Il file selezionato non sembra un PDF.');
@@ -55,11 +88,14 @@ async function read(){
    const headers=Array.from({length:maxDays},(_,i)=>'<th>'+String(i+1).padStart(2,'0')+'</th>').join('');
    const body=employees.map(e=>'<tr><td>'+esc(e.id||'—')+'</td><td>'+esc(e.name)+'</td>'+Array.from({length:maxDays},(_,i)=>{const c=e.codes[i];return '<td class="'+(c&&/^H\d/i.test(c.original)?'pdf-code':'')+'" title="'+(c?esc(c.original+(c.original.toUpperCase().startsWith('H')?' = '+c.converted+' ore':'')):'')+'">'+(c?esc(c.original)+(c.original.toUpperCase().startsWith('H')?'<small class="pdf-converted"> ('+esc(c.converted)+')</small>':''):'—')+'</td>'}).join('')+'</tr>').join('');
    $('pdfPreview').innerHTML='<table class="pdf-table"><thead><tr><th>Matricola</th><th>Dipendente</th>'+headers+'</tr></thead><tbody>'+body+'</tbody></table><p class="muted">Ogni colonna corrisponde al giorno del mese. I codici H sono mostrati anche convertiti (es. H32 → 16). Gli altri codici restano invariati. Scorri orizzontalmente la tabella per vedere tutti i giorni. Nessun turno è stato importato nel calendario.</p>';
+  if(employees.length){renderColleagueControls(employees)}else{$('colleagueCompare').classList.add('hidden')}
   } else $('pdfPreview').innerHTML='<div class="pdf-empty">Il testo è stato estratto, ma non ho riconosciuto righe dipendente con sufficiente sicurezza. Controlla il testo estratto qui sotto: il formato del prospetto potrebbe richiedere un adattamento.</div>';
   status('Lettura completata. Il calendario non è stato modificato.');
  }catch(e){console.error(e);status('Non sono riuscito a leggere questo PDF. Se è una scansione fotografica potrebbe servire un modulo OCR.')}
  finally{$('readPdfBtn').disabled=false}
 }
 $('readPdfBtn').addEventListener('click',read);
+$('compareBtn').addEventListener('click',compareColleagues);
+$('compareFilter').addEventListener('change',()=>{if(!$('compareResult').classList.contains('hidden'))compareColleagues()});
 $('exportRosterBtn').addEventListener('click',()=>{if(!latest)return;const blob=new Blob([JSON.stringify(latest,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='estrazione-turni-'+(latest.period?latest.period.year+'-'+String(latest.period.month).padStart(2,'0'):'pdf')+'.json';a.click();URL.revokeObjectURL(a.href)});
 })();
